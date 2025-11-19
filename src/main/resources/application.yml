@@ -2,7 +2,6 @@ spring:
   application:
     name: catalog-api
   datasource:
-    # Default to in-memory for local dev/tests. Do not hardcode real credentials here.
     url: jdbc:h2:mem:catalog;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
     username: sa
     password:
@@ -30,13 +29,18 @@ server:
   servlet:
     context-path: /catalog
 
-# TODO: enable resource server & Keycloak wiring when backend auth is ready
-#spring:
-#  security:
-#    oauth2:
-#      resourceserver:
-#        jwt:
-#          issuer-uri: https://your-keycloak-domain/realms/catalog
+logging:
+  level:
+    org.springframework: info
+
+supabase:
+  project-reference: ${SUPABASE_PROJECT:aksxbcingfgvaffrrnag}
+  s3:
+    access-key-id: ${SUPABASE_ACCESS_KEY_ID:ecda7550a746a6efded3e4ab5ccab8a8}
+    secret-access-key: ${SUPABASE_SECRET_ACCESS_KEY:6bfef46403a165c138bd54e2a18172a0c12e17fa1267423a14ded99005d0f7c8}
+    region: ${SUPABASE_REGION:us-east-1}
+    endpoint-url: ${SUPABASE_ENDPOINT_URL:https://aksxbcingfgvaffrrnag.storage.supabase.co/storage/v1/s3}
+    bucket-name: ${SUPABASE_BUCKET:products}
 
 --- # Postgres profile example
 spring:

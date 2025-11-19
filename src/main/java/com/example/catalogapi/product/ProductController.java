@@ -32,4 +32,15 @@ public class ProductController {
     public ProductResponse create(@Valid @RequestBody ProductRequest request) {
         return productService.create(request);
     }
+
+    @PutMapping("/{slug}")
+    public ProductResponse update(@PathVariable String slug, @Valid @RequestBody ProductRequest request) {
+        return productService.update(slug, request);
+    }
+
+    @DeleteMapping("/{slug}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable String slug) {
+        productService.delete(slug);
+    }
 }

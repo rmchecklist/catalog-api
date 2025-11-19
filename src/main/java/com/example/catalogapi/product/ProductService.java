@@ -30,16 +30,7 @@ public class ProductService {
 
     public ProductResponse create(ProductRequest request) {
         String slug = slugify(request.name());
-        List<ProductOption> options = request.options().stream()
-                .map(opt -> new ProductOption(
-                        opt.label(),
-                        opt.weight(),
-                        opt.minQty(),
-                        opt.available() == null || opt.available(),
-                        buildSku(request.vendor(), request.brand(), request.name(), opt.label())
-                ))
-                .toList();
-
+        List<ProductOption> options = mapOptions(request);
         ProductResponse product = new ProductResponse(
                 request.name(),
                 request.brand(),
@@ -52,6 +43,51 @@ public class ProductService {
         );
         inMemoryProducts.add(product);
         return product;
+    }
+
+    public ProductResponse update(String slug, ProductRequest request) {
+        int index = findIndexBySlug(slug);
+        List<ProductOption> options = mapOptions(request);
+        ProductResponse updated = new ProductResponse(
+                request.name(),
+                request.brand(),
+                request.vendor(),
+                request.category(),
+                request.description(),
+                slug,
+                request.imageUrl(),
+                options
+        );
+        inMemoryProducts.set(index, updated);
+        return updated;
+    }
+
+    public void delete(String slug) {
+        boolean removed = inMemoryProducts.removeIf(p -> p.slug().equalsIgnoreCase(slug));
+        if (!removed) {
+            throw new ProductNotFoundException(slug);
+        }
+    }
+
+    private int findIndexBySlug(String slug) {
+        for (int i = 0; i < inMemoryProducts.size(); i++) {
+            if (inMemoryProducts.get(i).slug().equalsIgnoreCase(slug)) {
+                return i;
+            }
+        }
+        throw new ProductNotFoundException(slug);
+    }
+
+    private List<ProductOption> mapOptions(ProductRequest request) {
+        return request.options().stream()
+                .map(opt -> new ProductOption(
+                        opt.label(),
+                        opt.weight(),
+                        opt.minQty(),
+                        opt.available() == null || opt.available(),
+                        buildSku(request.vendor(), request.brand(), request.name(), opt.label())
+                ))
+                .toList();
     }
 
     private String buildSku(String vendor, String brand, String name, String optionLabel) {
