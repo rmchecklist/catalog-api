@@ -49,7 +49,7 @@ spring:
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
   flyway:
-    enabled: true
+    enabled: false
 
 logging:
   level:
