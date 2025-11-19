@@ -28,7 +28,7 @@ spring:
 server:
   port: ${PORT:8080}
   servlet:
-    context-path: /api
+    context-path: /catalog
 
 # TODO: enable resource server & Keycloak wiring when backend auth is ready
 #spring:
@@ -45,7 +45,7 @@ spring:
       on-profile: postgres
   datasource:
     url: ${DB_URL:jdbc:postgresql://aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require}
-    username: ${DB_USERNAME:postgres}
+    username: ${DB_USERNAME:postgres.aksxbcingfgvaffrrnagç}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
   flyway:
