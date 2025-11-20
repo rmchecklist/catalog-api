@@ -18,8 +18,24 @@ public class ProductService {
         seed();
     }
 
-    public List<ProductResponse> findAll() {
-        return Collections.unmodifiableList(inMemoryProducts);
+    public List<ProductResponse> findAll(String search, String brand, String category) {
+        if ((search == null || search.isBlank()) &&
+                (brand == null || brand.isBlank()) &&
+                (category == null || category.isBlank())) {
+            return Collections.unmodifiableList(inMemoryProducts);
+        }
+
+        String searchTerm = search == null ? "" : search.toLowerCase(Locale.ROOT);
+        String brandTerm = brand == null ? "" : brand.toLowerCase(Locale.ROOT);
+        String categoryTerm = category == null ? "" : category.toLowerCase(Locale.ROOT);
+
+        return inMemoryProducts.stream()
+                .filter(p -> searchTerm.isEmpty() ||
+                        p.name().toLowerCase(Locale.ROOT).contains(searchTerm) ||
+                        p.description().toLowerCase(Locale.ROOT).contains(searchTerm))
+                .filter(p -> brandTerm.isEmpty() || p.brand().toLowerCase(Locale.ROOT).equals(brandTerm))
+                .filter(p -> categoryTerm.isEmpty() || p.category().toLowerCase(Locale.ROOT).equals(categoryTerm))
+                .toList();
     }
 
     public Optional<ProductResponse> findBySlug(String slug) {

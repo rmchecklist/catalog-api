@@ -17,8 +17,12 @@ public class ProductController {
     }
 
     @GetMapping
-    public List<ProductResponse> all() {
-        return productService.findAll();
+    public List<ProductResponse> all(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "brand", required = false) String brand,
+            @RequestParam(value = "category", required = false) String category
+    ) {
+        return productService.findAll(search, brand, category);
     }
 
     @GetMapping("/{slug}")
