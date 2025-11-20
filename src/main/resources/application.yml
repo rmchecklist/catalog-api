@@ -11,12 +11,12 @@ spring:
       minimum-idle: ${DB_POOL_MIN:1}
       idle-timeout: ${DB_IDLE_TIMEOUT_MS:60000}
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
     show-sql: true
   flyway:
     enabled: false
@@ -40,6 +40,8 @@ logging:
 
 supabase:
   project-reference: ${SUPABASE_PROJECT:aksxbcingfgvaffrrnag}
+  jwt:
+    secret: ${SUPABASE_JWT_SECRET:Ifh0Xf7sNQwg4YaF5+BuVph/+n9hAyLPOALZoERKGoPNCw82PDeCOZNW+BhVY76ALpnw9wgWO3YnTz20ZUfzKA==}
   s3:
     access-key-id: ${SUPABASE_ACCESS_KEY_ID:ecda7550a746a6efded3e4ab5ccab8a8}
     secret-access-key: ${SUPABASE_SECRET_ACCESS_KEY:6bfef46403a165c138bd54e2a18172a0c12e17fa1267423a14ded99005d0f7c8}

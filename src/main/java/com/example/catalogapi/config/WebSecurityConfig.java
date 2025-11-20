@@ -2,8 +2,12 @@ package com.example.catalogapi.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -14,12 +18,26 @@ import java.util.List;
 @Configuration
 public class WebSecurityConfig {
 
+    @Value("${supabase.jwt.secret:}")
+    private String supabaseJwtSecret;
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        JwtAuthenticationConverter jwtConverter = new JwtAuthenticationConverter();
+
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                        .requestMatchers("/api/storage/**").permitAll()
+                        .requestMatchers("/api/cart/**").permitAll()
+                        .requestMatchers("/api/products/**").hasRole("ADMIN")
+                        .anyRequest().authenticated())
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter)
+                                .decoder(SupabaseJwtDecoder.build(supabaseJwtSecret))))
                 .httpBasic(Customizer.withDefaults());
         return http.build();
     }
