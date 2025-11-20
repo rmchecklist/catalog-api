@@ -1,114 +1,104 @@
 package com.example.catalogapi.product;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
 @Service
+@Transactional
 public class ProductService {
 
-    private final List<ProductResponse> inMemoryProducts = new ArrayList<>();
+    private final ProductRepository productRepository;
 
-    public ProductService() {
-        seed();
+    public ProductService(ProductRepository productRepository) {
+        this.productRepository = productRepository;
     }
 
     public List<ProductResponse> findAll(String search, String brand, String category) {
-        if ((search == null || search.isBlank()) &&
-                (brand == null || brand.isBlank()) &&
-                (category == null || category.isBlank())) {
-            return Collections.unmodifiableList(inMemoryProducts);
-        }
-
+        List<ProductEntity> all = productRepository.findAll();
         String searchTerm = search == null ? "" : search.toLowerCase(Locale.ROOT);
         String brandTerm = brand == null ? "" : brand.toLowerCase(Locale.ROOT);
         String categoryTerm = category == null ? "" : category.toLowerCase(Locale.ROOT);
 
-        return inMemoryProducts.stream()
+        return all.stream()
                 .filter(p -> searchTerm.isEmpty() ||
-                        p.name().toLowerCase(Locale.ROOT).contains(searchTerm) ||
-                        p.description().toLowerCase(Locale.ROOT).contains(searchTerm))
-                .filter(p -> brandTerm.isEmpty() || p.brand().toLowerCase(Locale.ROOT).equals(brandTerm))
-                .filter(p -> categoryTerm.isEmpty() || p.category().toLowerCase(Locale.ROOT).equals(categoryTerm))
+                        p.getName().toLowerCase(Locale.ROOT).contains(searchTerm) ||
+                        p.getDescription().toLowerCase(Locale.ROOT).contains(searchTerm))
+                .filter(p -> brandTerm.isEmpty() || p.getBrand().toLowerCase(Locale.ROOT).equals(brandTerm))
+                .filter(p -> categoryTerm.isEmpty() || p.getCategory().toLowerCase(Locale.ROOT).equals(categoryTerm))
+                .map(this::toResponse)
                 .toList();
     }
 
     public Optional<ProductResponse> findBySlug(String slug) {
-        return inMemoryProducts.stream()
-                .filter(p -> p.slug().equalsIgnoreCase(slug))
-                .findFirst();
+        return productRepository.findBySlugIgnoreCase(slug).map(this::toResponse);
     }
 
     public ProductResponse create(ProductRequest request) {
         String slug = slugify(request.name());
-        List<ProductOption> options = mapOptions(request);
-        ProductResponse product = new ProductResponse(
-                request.name(),
-                request.brand(),
-                request.vendor(),
-                request.category(),
-                request.description(),
-                slug,
-                request.imageUrl(),
-                options
-        );
-        inMemoryProducts.add(product);
-        return product;
+        if (productRepository.existsBySlugIgnoreCase(slug)) {
+            throw new IllegalArgumentException("Product already exists with slug: " + slug);
+        }
+        ProductEntity entity = mapToEntity(request, slug, null);
+        ProductEntity saved = productRepository.save(entity);
+        return toResponse(saved);
     }
 
     public ProductResponse update(String slug, ProductRequest request) {
-        int index = findIndexBySlug(slug);
-        List<ProductOption> options = mapOptions(request);
-        ProductResponse updated = new ProductResponse(
-                request.name(),
-                request.brand(),
-                request.vendor(),
-                request.category(),
-                request.description(),
-                slug,
-                request.imageUrl(),
-                options
-        );
-        inMemoryProducts.set(index, updated);
-        return updated;
+        ProductEntity existing = productRepository.findBySlugIgnoreCase(slug)
+                .orElseThrow(() -> new ProductNotFoundException(slug));
+        // Keep existing slug to avoid breaking links; regenerate sku/option details.
+        ProductEntity updated = mapToEntity(request, existing.getSlug(), existing);
+        ProductEntity saved = productRepository.save(updated);
+        return toResponse(saved);
     }
 
     public void delete(String slug) {
-        boolean removed = inMemoryProducts.removeIf(p -> p.slug().equalsIgnoreCase(slug));
-        if (!removed) {
-            throw new ProductNotFoundException(slug);
-        }
+        ProductEntity existing = productRepository.findBySlugIgnoreCase(slug)
+                .orElseThrow(() -> new ProductNotFoundException(slug));
+        productRepository.delete(existing);
     }
 
-    private int findIndexBySlug(String slug) {
-        for (int i = 0; i < inMemoryProducts.size(); i++) {
-            if (inMemoryProducts.get(i).slug().equalsIgnoreCase(slug)) {
-                return i;
-            }
-        }
-        throw new ProductNotFoundException(slug);
-    }
-
-    private List<ProductOption> mapOptions(ProductRequest request) {
-        return request.options().stream()
-                .map(opt -> new ProductOption(
-                        opt.label(),
-                        opt.weight(),
-                        opt.minQty(),
-                        opt.available() == null || opt.available(),
-                        buildSku(request.vendor(), request.brand(), request.name(), opt.label())
-                ))
+    private ProductResponse toResponse(ProductEntity entity) {
+        List<ProductOption> options = entity.getOptions().stream()
+                .map(opt -> new ProductOption(opt.getLabel(), opt.getWeight(), opt.getMinQty(), opt.isAvailable(), opt.getSku()))
                 .toList();
+        return new ProductResponse(
+                entity.getName(),
+                entity.getBrand(),
+                entity.getVendor(),
+                entity.getCategory(),
+                entity.getDescription(),
+                entity.getSlug(),
+                entity.getImageUrl(),
+                options
+        );
     }
 
-    private String buildSku(String vendor, String brand, String name, String optionLabel) {
-        String base = String.join("-", safe(vendor), safe(brand), safe(name), safe(optionLabel));
-        return base.replaceAll("-+", "-").toUpperCase(Locale.ROOT);
+    private ProductEntity mapToEntity(ProductRequest request, String slug, ProductEntity target) {
+        ProductEntity entity = target == null ? new ProductEntity() : target;
+        entity.setName(request.name());
+        entity.setBrand(request.brand());
+        entity.setVendor(request.vendor());
+        entity.setCategory(request.category());
+        entity.setDescription(request.description());
+        entity.setSlug(slug);
+        entity.setImageUrl(request.imageUrl());
+        entity.getOptions().clear();
+        entity.getOptions().addAll(request.options().stream().map(opt -> {
+            ProductOptionEmbeddable emb = new ProductOptionEmbeddable();
+            emb.setLabel(opt.label());
+            emb.setWeight(opt.weight());
+            emb.setMinQty(opt.minQty());
+            emb.setAvailable(opt.available() == null || opt.available());
+            emb.setSku(buildSku(request.vendor(), request.brand(), request.name(), opt.label()));
+            return emb;
+        }).toList());
+        return entity;
     }
 
     private String slugify(String input) {
@@ -120,51 +110,12 @@ public class ProductService {
                 .replaceAll("\\s+", "-");
     }
 
-    private String safe(String value) {
-        return value == null ? "" : slugify(value);
+    private String buildSku(String vendor, String brand, String name, String optionLabel) {
+        String base = String.join("-", safe(vendor), safe(brand), safe(name), safe(optionLabel));
+        return base.replaceAll("-+", "-").toUpperCase(Locale.ROOT);
     }
 
-    private void seed() {
-        create(new ProductRequest(
-                "Stainless Bottle",
-                "Acme",
-                "Acme",
-                "Beverages",
-                "Insulated stainless steel bottle with multiple weight/size options.",
-                "https://images.unsplash.com/photo-1526402462921-9fe5c5f2a2c9?auto=format&fit=crop&w=1200&q=80",
-                List.of(
-                        new ProductOptionRequest("500ml", "0.5kg", 25, true),
-                        new ProductOptionRequest("750ml", "0.7kg", 25, true),
-                        new ProductOptionRequest("1L", "1.0kg", 25, false)
-                )
-        ));
-
-        create(new ProductRequest(
-                "Eco Mailer",
-                "Northwind",
-                "Northwind",
-                "Packaging",
-                "Compostable mailer with reinforced seams, ships flat.",
-                "https://images.unsplash.com/photo-1525909002-1b05e0c869d0?auto=format&fit=crop&w=1200&q=80",
-                List.of(
-                        new ProductOptionRequest("Small", null, 100, true),
-                        new ProductOptionRequest("Medium", null, 100, true),
-                        new ProductOptionRequest("Large", null, 100, true)
-                )
-        ));
-
-        create(new ProductRequest(
-                "Carbon Steel Hex Bolt",
-                "Globex",
-                "Globex",
-                "Hardware",
-                "Industrial grade hex bolt, metric and imperial options.",
-                "https://images.unsplash.com/photo-1503389152951-9f343605f61e?auto=format&fit=crop&w=1200&q=80",
-                List.of(
-                        new ProductOptionRequest("M8 x 40", null, 50, true),
-                        new ProductOptionRequest("M10 x 50", null, 50, true),
-                        new ProductOptionRequest("3/8in x 2in", null, 50, false)
-                )
-        ));
+    private String safe(String value) {
+        return value == null ? "" : slugify(value);
     }
 }
