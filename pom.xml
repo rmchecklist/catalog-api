@@ -84,17 +84,32 @@
 			<scope>test</scope>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/software.amazon.awssdk/s3 -->
-		<dependency>
-			<groupId>software.amazon.awssdk</groupId>
-			<artifactId>s3</artifactId>
-			<version>2.38.8</version> <!-- Use the latest version -->
-		</dependency>
-		<dependency>
-			<groupId>software.amazon.awssdk</groupId>
-			<artifactId>regions</artifactId>
-			<version>2.38.8</version> <!-- Match the S3 version -->
-		</dependency>
-	</dependencies>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <version>2.38.8</version> <!-- Use the latest version -->
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>regions</artifactId>
+      <version>2.38.8</version> <!-- Match the S3 version -->
+    </dependency>
+    <dependency>
+      <groupId>com.github.librepdf</groupId>
+      <artifactId>openpdf</artifactId>
+      <version>1.3.39</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.zxing</groupId>
+      <artifactId>core</artifactId>
+      <version>3.5.3</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.zxing</groupId>
+      <artifactId>javase</artifactId>
+      <version>3.5.3</version>
+    </dependency>
+  </dependencies>
 
 	<!-- Add the AWS SDK BOM for consistent version management -->
 	<dependencyManagement>

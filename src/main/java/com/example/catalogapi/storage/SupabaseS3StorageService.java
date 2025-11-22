@@ -44,6 +44,18 @@ public class SupabaseS3StorageService {
         return key;
     }
 
+    public String uploadBytes(String keyPrefix, byte[] content, String contentType) {
+        String key = (keyPrefix.endsWith("/") ? keyPrefix : keyPrefix + "/") + UUID.randomUUID() + ".pdf";
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .contentType(contentType)
+                .acl("public-read")
+                .build();
+        s3Client.putObject(putObjectRequest, RequestBody.fromBytes(content));
+        return key;
+    }
+
     public String getPublicReadUrl(String key) {
         return ("""
                 https://%s.supabase.co/storage/v1/object/public/%s/%s
