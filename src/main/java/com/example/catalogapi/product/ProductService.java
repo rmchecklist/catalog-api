@@ -74,7 +74,9 @@ public class ProductService {
                         opt.getSku(),
                         opt.getPurchasePrice(),
                         opt.getSellingPrice(),
-                        opt.getMarketPrice()))
+                        opt.getMarketPrice(),
+                        opt.getStock() == null ? 0 : opt.getStock(),
+                        opt.getLowStockThreshold() == null ? 10 : opt.getLowStockThreshold()))
                 .toList();
         return new ProductResponse(
                 entity.getName(),
@@ -110,6 +112,8 @@ public class ProductService {
             emb.setPurchasePrice(defaultZero(opt.purchasePrice()));
             emb.setSellingPrice(defaultZero(opt.sellingPrice()));
             emb.setMarketPrice(opt.marketPrice());
+            emb.setStock(opt.stock() == null ? 0 : opt.stock());
+            emb.setLowStockThreshold(opt.lowStockThreshold() == null ? 10 : opt.lowStockThreshold());
             return emb;
         }).toList());
         return entity;

@@ -8,5 +8,7 @@ public record ProductOption(
         String sku,
         java.math.BigDecimal purchasePrice,
         java.math.BigDecimal sellingPrice,
-        java.math.BigDecimal marketPrice
+        java.math.BigDecimal marketPrice,
+        Integer stock,
+        Integer lowStockThreshold
 ) { }

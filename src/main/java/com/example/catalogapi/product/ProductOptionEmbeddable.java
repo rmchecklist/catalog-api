@@ -1,6 +1,7 @@
 package com.example.catalogapi.product;
 
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.Column;
 
 @Embeddable
 public class ProductOptionEmbeddable {
@@ -12,6 +13,10 @@ public class ProductOptionEmbeddable {
     private java.math.BigDecimal purchasePrice;
     private java.math.BigDecimal sellingPrice;
     private java.math.BigDecimal marketPrice;
+    @Column(name = "stock_qty")
+    private Integer stock;
+    @Column(name = "low_stock_threshold")
+    private Integer lowStockThreshold;
 
     public String getLabel() {
         return label;
@@ -75,5 +80,21 @@ public class ProductOptionEmbeddable {
 
     public void setMarketPrice(java.math.BigDecimal marketPrice) {
         this.marketPrice = marketPrice;
+    }
+
+    public Integer getStock() {
+        return stock;
+    }
+
+    public void setStock(Integer stock) {
+        this.stock = stock;
+    }
+
+    public Integer getLowStockThreshold() {
+        return lowStockThreshold;
+    }
+
+    public void setLowStockThreshold(Integer lowStockThreshold) {
+        this.lowStockThreshold = lowStockThreshold;
     }
 }

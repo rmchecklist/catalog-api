@@ -23,5 +23,7 @@ record ProductOptionRequest(
         java.math.BigDecimal purchasePrice,
         java.math.BigDecimal sellingPrice,
         java.math.BigDecimal marketPrice,
-        String sku
+        String sku,
+        Integer stock,
+        Integer lowStockThreshold
 ) {}
