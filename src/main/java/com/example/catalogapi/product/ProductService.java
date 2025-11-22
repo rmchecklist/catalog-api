@@ -7,6 +7,7 @@ import java.text.Normalizer;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.math.BigDecimal;
 
 @Service
 @Transactional
@@ -65,7 +66,15 @@ public class ProductService {
 
     private ProductResponse toResponse(ProductEntity entity) {
         List<ProductOption> options = entity.getOptions().stream()
-                .map(opt -> new ProductOption(opt.getLabel(), opt.getWeight(), opt.getMinQty(), opt.isAvailable(), opt.getSku()))
+                .map(opt -> new ProductOption(
+                        opt.getLabel(),
+                        opt.getWeight(),
+                        opt.getMinQty(),
+                        opt.isAvailable(),
+                        opt.getSku(),
+                        opt.getPurchasePrice(),
+                        opt.getSellingPrice(),
+                        opt.getMarketPrice()))
                 .toList();
         return new ProductResponse(
                 entity.getName(),
@@ -95,7 +104,12 @@ public class ProductService {
             emb.setWeight(opt.weight());
             emb.setMinQty(opt.minQty());
             emb.setAvailable(opt.available() == null || opt.available());
-            emb.setSku(buildSku(request.vendor(), request.brand(), request.name(), opt.label()));
+            emb.setSku(opt.sku() != null && !opt.sku().isBlank()
+                    ? opt.sku().toUpperCase(Locale.ROOT)
+                    : buildSku(request.vendor(), request.brand(), request.name(), opt.label()));
+            emb.setPurchasePrice(defaultZero(opt.purchasePrice()));
+            emb.setSellingPrice(defaultZero(opt.sellingPrice()));
+            emb.setMarketPrice(opt.marketPrice());
             return emb;
         }).toList());
         return entity;
@@ -117,5 +131,9 @@ public class ProductService {
 
     private String safe(String value) {
         return value == null ? "" : slugify(value);
+    }
+
+    private BigDecimal defaultZero(BigDecimal val) {
+        return val == null ? BigDecimal.ZERO : val;
     }
 }

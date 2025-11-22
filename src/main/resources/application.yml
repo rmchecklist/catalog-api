@@ -21,12 +21,13 @@ spring:
   flyway:
     enabled: false
   mail:
-    host: localhost
-    port: 25
-    username:
-    password:
+    host: ${SMTP_HOST:email-smtp.us-east-1.amazonaws.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:AKIAU6GDWDBZCR4CRZGM}
+    password: ${SMTP_PASSWORD:BJbLoQGGm72skCYT7uglulERSp79QeFn8stoO5m2i/fF}
+    from: ${MAIL_FROM:admin@ilanfoods.com}
     properties:
-      mail.smtp.auth: false
+      mail.smtp.auth: true
       mail.smtp.starttls.enable: true
 
 server:
@@ -48,6 +49,9 @@ supabase:
     region: ${SUPABASE_REGION:us-east-1}
     endpoint-url: ${SUPABASE_ENDPOINT_URL:https://aksxbcingfgvaffrrnag.storage.supabase.co/storage/v1/s3}
     bucket-name: ${SUPABASE_BUCKET:products}
+
+quotes:
+  to: ${QUOTE_TO:${MAIL_FROM:}}
 
 --- # Postgres profile example
 

@@ -19,5 +19,9 @@ record ProductOptionRequest(
         @NotBlank String label,
         String weight,
         @NotNull Integer minQty,
-        Boolean available
+        Boolean available,
+        java.math.BigDecimal purchasePrice,
+        java.math.BigDecimal sellingPrice,
+        java.math.BigDecimal marketPrice,
+        String sku
 ) {}

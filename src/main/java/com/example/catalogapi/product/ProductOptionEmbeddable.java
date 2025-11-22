@@ -9,6 +9,9 @@ public class ProductOptionEmbeddable {
     private Integer minQty;
     private boolean available;
     private String sku;
+    private java.math.BigDecimal purchasePrice;
+    private java.math.BigDecimal sellingPrice;
+    private java.math.BigDecimal marketPrice;
 
     public String getLabel() {
         return label;
@@ -48,5 +51,29 @@ public class ProductOptionEmbeddable {
 
     public void setSku(String sku) {
         this.sku = sku;
+    }
+
+    public java.math.BigDecimal getPurchasePrice() {
+        return purchasePrice;
+    }
+
+    public void setPurchasePrice(java.math.BigDecimal purchasePrice) {
+        this.purchasePrice = purchasePrice;
+    }
+
+    public java.math.BigDecimal getSellingPrice() {
+        return sellingPrice;
+    }
+
+    public void setSellingPrice(java.math.BigDecimal sellingPrice) {
+        this.sellingPrice = sellingPrice;
+    }
+
+    public java.math.BigDecimal getMarketPrice() {
+        return marketPrice;
+    }
+
+    public void setMarketPrice(java.math.BigDecimal marketPrice) {
+        this.marketPrice = marketPrice;
     }
 }

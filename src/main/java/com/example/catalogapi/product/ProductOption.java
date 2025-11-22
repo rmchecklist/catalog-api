@@ -5,5 +5,8 @@ public record ProductOption(
         String weight,
         Integer minQty,
         boolean available,
-        String sku
+        String sku,
+        java.math.BigDecimal purchasePrice,
+        java.math.BigDecimal sellingPrice,
+        java.math.BigDecimal marketPrice
 ) { }
