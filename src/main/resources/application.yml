@@ -39,6 +39,10 @@ logging:
   level:
     org.springframework: info
 
+app:
+  external-base-url: ${APP_EXTERNAL_BASE_URL:http://localhost:8080/catalog}
+  ui-base-url: ${APP_UI_BASE_URL:http://localhost:4200}
+
 supabase:
   project-reference: ${SUPABASE_PROJECT:aksxbcingfgvaffrrnag}
   jwt:

@@ -1,19 +1,16 @@
 package com.example.catalogapi.order;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
-public record QuoteResponse(
+public record InvoiceSummaryResponse(
         UUID id,
         String invoiceNumber,
         String customerCode,
         String email,
-        String name,
-        String phone,
-        String company,
-        QuoteStatus status,
+        String type, // ORDER or QUOTE
+        String status,
         Instant createdAt,
-        List<OrderItemDto> items,
-        String pdfUrl
+        String pdfUrl,
+        String viewUrl
 ) { }

@@ -13,6 +13,7 @@ public record OrderRequest(
         String name,
         String phone,
         String company,
+        @NotBlank String customerCode,
         @NotEmpty List<OrderItemRequest> items
 ) { }
 

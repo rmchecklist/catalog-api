@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.awt.Color;
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Service
@@ -39,18 +38,27 @@ public class PdfGeneratorService {
 
     private byte[] render(UUID id, boolean isQuote, OrderResponse order, QuoteResponse quote, String viewUrl) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            Document doc = new Document();
-            PdfWriter.getInstance(doc, baos);
-            doc.open();
+        Document doc = new Document();
+        PdfWriter.getInstance(doc, baos);
+        doc.open();
 
-            String title = isQuote ? "Quote" : "Invoice";
-            doc.add(new Paragraph(title + " #" + id.toString(), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16)));
-            doc.add(new Paragraph(" "));
+        String title = isQuote ? "Quote" : "Invoice";
+        String invNumber = isQuote ? quote.invoiceNumber() : order.invoiceNumber();
 
-            String name = isQuote ? quote.name() : order.name();
-            String email = isQuote ? quote.email() : order.email();
-            String phone = isQuote ? quote.phone() : order.phone();
-            String company = isQuote ? quote.company() : order.company();
+        // Header
+        PdfPTable header = new PdfPTable(2);
+        header.setWidthPercentage(100);
+        header.setSpacingAfter(10f);
+        header.addCell(borderless(new Phrase("Ilan Foods", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16))));
+        header.addCell(borderless(new Phrase(title + " " + invNumber, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 16))));
+        header.addCell(borderless(new Phrase("445 Hawks Creek Pkwy\nFort Mill SC\ncatalog.ilanfoods.com\n717-215-0206")));
+        header.addCell(borderless(new Phrase("Date: " + java.time.LocalDate.now())));
+        doc.add(header);
+
+        String name = isQuote ? quote.name() : order.name();
+        String email = isQuote ? quote.email() : order.email();
+        String phone = isQuote ? quote.phone() : order.phone();
+        String company = isQuote ? quote.company() : order.company();
 
             doc.add(new Paragraph("To: " + (name != null ? name : "Customer")));
             doc.add(new Paragraph("Email: " + email));
@@ -58,36 +66,38 @@ public class PdfGeneratorService {
             if (company != null && !company.isBlank()) doc.add(new Paragraph("Company: " + company));
             doc.add(new Paragraph(" "));
 
-            PdfPTable table = new PdfPTable(4);
-            table.setWidthPercentage(100);
-            table.addCell(headerCell("Product"));
-            table.addCell(headerCell("Option"));
-            table.addCell(headerCell("Qty"));
-            table.addCell(headerCell("SKU"));
+        PdfPTable table = new PdfPTable(4);
+        table.setWidthPercentage(100);
+        table.addCell(headerCell("SKU"));
+        table.addCell(headerCell("Product"));
+        table.addCell(headerCell("Option"));
+        table.addCell(headerCell("Qty"));
 
-            var items = isQuote ? quote.items() : order.items();
-            items.forEach(item -> {
-                table.addCell(item.productName());
-                table.addCell(item.optionLabel());
-                table.addCell(String.valueOf(item.quantity()));
-                table.addCell(item.sku() != null ? item.sku() : "");
-            });
-            doc.add(table);
-            doc.add(new Paragraph(" "));
+        var items = isQuote ? quote.items() : order.items();
+        items.forEach(item -> {
+            table.addCell(item.sku() != null ? item.sku() : "");
+            table.addCell(item.productName());
+            table.addCell(item.optionLabel());
+            table.addCell(String.valueOf(item.quantity()));
+        });
+        doc.add(table);
+        doc.add(new Paragraph(" "));
 
-            doc.add(new Paragraph("View online: " + viewUrl));
-            doc.add(new Paragraph(" "));
+        doc.add(new Paragraph("View online: " + viewUrl));
+        doc.add(new Paragraph(" "));
 
-            Image barcode = buildBarcode(id.toString() + "|" + viewUrl);
-            if (barcode != null) {
-                barcode.scalePercent(60);
-                doc.add(barcode);
-            }
+        Image qr = buildQr(id.toString() + "|" + viewUrl);
+        if (qr != null) {
+            qr.scalePercent(60);
+            doc.add(qr);
+        }
 
-            doc.close();
-            return baos.toByteArray();
-        } catch (Exception ex) {
-            throw new IllegalStateException("Failed to render PDF", ex);
+        doc.add(new Paragraph("Thank you for choosing Ilan Foods!", FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12)));
+
+        doc.close();
+        return baos.toByteArray();
+    } catch (Exception ex) {
+        throw new IllegalStateException("Failed to render PDF", ex);
         }
     }
 
@@ -97,9 +107,15 @@ public class PdfGeneratorService {
         return cell;
     }
 
-    private Image buildBarcode(String payload) {
+    private PdfPCell borderless(Phrase phrase) {
+        PdfPCell cell = new PdfPCell(phrase);
+        cell.setBorder(Rectangle.NO_BORDER);
+        return cell;
+    }
+
+    private Image buildQr(String payload) {
         try {
-            BitMatrix matrix = new MultiFormatWriter().encode(payload, BarcodeFormat.CODE_128, 400, 80);
+            BitMatrix matrix = new MultiFormatWriter().encode(payload, BarcodeFormat.QR_CODE, 220, 220);
             var out = new ByteArrayOutputStream();
             MatrixToImageWriter.writeToStream(matrix, "png", out);
             return Image.getInstance(out.toByteArray());

@@ -14,6 +14,11 @@ public class OrderEntity {
     @GeneratedValue
     private UUID id;
 
+    private String invoiceNumber;
+
+    private String customerCode;
+    private String pdfUrl;
+
     private String customerEmail;
     private String customerName;
     private String phone;
@@ -43,6 +48,30 @@ public class OrderEntity {
 
     public UUID getId() {
         return id;
+    }
+
+    public String getInvoiceNumber() {
+        return invoiceNumber;
+    }
+
+    public void setInvoiceNumber(String invoiceNumber) {
+        this.invoiceNumber = invoiceNumber;
+    }
+
+    public String getCustomerCode() {
+        return customerCode;
+    }
+
+    public void setCustomerCode(String customerCode) {
+        this.customerCode = customerCode;
+    }
+
+    public String getPdfUrl() {
+        return pdfUrl;
+    }
+
+    public void setPdfUrl(String pdfUrl) {
+        this.pdfUrl = pdfUrl;
     }
 
     public String getCustomerEmail() {

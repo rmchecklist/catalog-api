@@ -18,6 +18,9 @@ public class QuoteEntity {
     private String requesterName;
     private String phone;
     private String company;
+    private String customerCode;
+    private String invoiceNumber;
+    private String pdfUrl;
 
     @Enumerated(EnumType.STRING)
     private QuoteStatus status;
@@ -75,6 +78,30 @@ public class QuoteEntity {
 
     public void setCompany(String company) {
         this.company = company;
+    }
+
+    public String getCustomerCode() {
+        return customerCode;
+    }
+
+    public void setCustomerCode(String customerCode) {
+        this.customerCode = customerCode;
+    }
+
+    public String getInvoiceNumber() {
+        return invoiceNumber;
+    }
+
+    public void setInvoiceNumber(String invoiceNumber) {
+        this.invoiceNumber = invoiceNumber;
+    }
+
+    public String getPdfUrl() {
+        return pdfUrl;
+    }
+
+    public void setPdfUrl(String pdfUrl) {
+        this.pdfUrl = pdfUrl;
     }
 
     public QuoteStatus getStatus() {

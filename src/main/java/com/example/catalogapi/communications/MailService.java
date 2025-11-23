@@ -5,7 +5,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+
+import jakarta.mail.internet.MimeMessage;
 
 @Service
 public class MailService {
@@ -37,6 +40,27 @@ public class MailService {
             mailSender.send(message);
         } catch (Exception ex) {
             log.error("Failed to send email to {}: {}", to, ex.getMessage());
+        }
+    }
+
+    public void sendHtml(String to, String subject, String html, String replyTo) {
+        if (fromAddress == null || fromAddress.isBlank()) {
+            log.warn("spring.mail.from is not set; skipping email send to {}", to);
+            return;
+        }
+        try {
+            MimeMessage mime = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mime, "UTF-8");
+            helper.setFrom(fromAddress);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(html, true);
+            if (replyTo != null && !replyTo.isBlank()) {
+                helper.setReplyTo(replyTo);
+            }
+            mailSender.send(mime);
+        } catch (Exception ex) {
+            log.error("Failed to send html email to {}: {}", to, ex.getMessage());
         }
     }
 }
