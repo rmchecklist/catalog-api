@@ -9,6 +9,7 @@ public record NewThreadRequest(
         @NotBlank @Email String to,
         String cc,
         String bcc,
-        @NotBlank String body
+        @NotBlank String body,
+        String type // CUSTOMER or VENDOR
 ) {
 }

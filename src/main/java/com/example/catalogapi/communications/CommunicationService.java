@@ -5,6 +5,7 @@ import com.example.catalogapi.communications.dto.NewThreadRequest;
 import com.example.catalogapi.communications.dto.QuoteRequest;
 import com.example.catalogapi.communications.dto.ReplyRequest;
 import com.example.catalogapi.communications.dto.ThreadResponse;
+import com.example.catalogapi.communications.CommunicationThreadType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +44,7 @@ public class CommunicationService {
     public ThreadResponse createThread(NewThreadRequest request) {
         CommunicationThreadEntity thread = new CommunicationThreadEntity();
         thread.setSubject(request.subject());
+        thread.setType(parseType(request.type()));
         MessageEntity message = buildMessage(null, request.from(), request.to(), request.cc(), request.bcc(), request.body(), MessageDirection.OUTBOUND);
         message.setThread(thread);
         thread.getMessages().add(message);
@@ -52,11 +54,19 @@ public class CommunicationService {
         return toResponse(thread);
     }
 
+    public ThreadResponse createVendorThread(String subject, String from, String to, String body) {
+        NewThreadRequest req = new NewThreadRequest(subject, from, to, null, null, body, "VENDOR");
+        return createThread(req);
+    }
+
     public ThreadResponse reply(UUID threadId, ReplyRequest request) {
         CommunicationThreadEntity thread = threadRepository.findById(threadId)
                 .orElseThrow(() -> new IllegalArgumentException("Thread not found: " + threadId));
         MessageEntity message = buildMessage(thread, request.from(), request.to(), request.cc(), request.bcc(), request.body(), MessageDirection.OUTBOUND);
         thread.getMessages().add(message);
+        if (request.status() != null) {
+            thread.setStatus(request.status());
+        }
         thread.setUpdatedAt(message.getCreatedAt());
         threadRepository.save(thread);
         mailService.sendText(request.to(), thread.getSubject(), request.body(), request.from());
@@ -66,6 +76,7 @@ public class CommunicationService {
     public ThreadResponse createQuoteThread(QuoteRequest request, String internalRecipient) {
         CommunicationThreadEntity thread = new CommunicationThreadEntity();
         thread.setSubject("Quote request from " + request.contact().name());
+        thread.setType(CommunicationThreadType.CUSTOMER);
         String body = buildQuoteBody(request);
         MessageEntity message = buildMessage(null, request.contact().email(), internalRecipient, null, null, body, MessageDirection.INBOUND);
         message.setThread(thread);
@@ -148,7 +159,17 @@ public class CommunicationService {
     private CommunicationThreadEntity newThread(String subject) {
         CommunicationThreadEntity t = new CommunicationThreadEntity();
         t.setSubject(subject);
+        t.setType(CommunicationThreadType.CUSTOMER);
         return t;
+    }
+
+    private CommunicationThreadType parseType(String raw) {
+        if (raw == null || raw.isBlank()) return CommunicationThreadType.CUSTOMER;
+        try {
+            return CommunicationThreadType.valueOf(raw.toUpperCase());
+        } catch (Exception ignored) {
+            return CommunicationThreadType.CUSTOMER;
+        }
     }
 
     private ThreadResponse toResponse(CommunicationThreadEntity thread) {
@@ -167,6 +188,7 @@ public class CommunicationService {
                 thread.getId(),
                 thread.getSubject(),
                 thread.getStatus(),
+                thread.getType(),
                 thread.getUpdatedAt(),
                 messages
         );

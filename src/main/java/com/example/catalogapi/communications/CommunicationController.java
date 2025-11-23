@@ -6,6 +6,8 @@ import com.example.catalogapi.communications.dto.ThreadResponse;
 import com.example.catalogapi.communications.dto.QuoteRequest;
 import com.example.catalogapi.communications.dto.InboundEmailRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
@@ -54,10 +56,23 @@ public class CommunicationController {
         return service.createQuoteThread(request, target);
     }
 
+    @PostMapping("/vendor")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ThreadResponse vendor(@Valid @RequestBody VendorEmailRequest request) {
+        return service.createVendorThread(request.subject(), request.from(), request.to(), request.body());
+    }
+
     // Webhook for inbound parsing (e.g., from SES pipeline or manual)
     @PostMapping("/inbound")
     @ResponseStatus(HttpStatus.CREATED)
     public ThreadResponse inbound(@Valid @RequestBody InboundEmailRequest request) {
         return service.inboundEmail(request);
     }
+
+    public record VendorEmailRequest(
+            @NotBlank String subject,
+            @NotBlank @Email String from,
+            @NotBlank @Email String to,
+            String body
+    ) {}
 }

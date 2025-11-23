@@ -19,6 +19,9 @@ public class CommunicationThreadEntity {
     @Enumerated(EnumType.STRING)
     private CommunicationThreadStatus status = CommunicationThreadStatus.OPEN;
 
+    @Enumerated(EnumType.STRING)
+    private CommunicationThreadType type = CommunicationThreadType.CUSTOMER;
+
     private OffsetDateTime createdAt = OffsetDateTime.now();
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 
@@ -44,6 +47,14 @@ public class CommunicationThreadEntity {
 
     public void setStatus(CommunicationThreadStatus status) {
         this.status = status;
+    }
+
+    public CommunicationThreadType getType() {
+        return type;
+    }
+
+    public void setType(CommunicationThreadType type) {
+        this.type = type;
     }
 
     public OffsetDateTime getCreatedAt() {

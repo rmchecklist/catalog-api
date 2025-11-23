@@ -1,6 +1,7 @@
 package com.example.catalogapi.communications.dto;
 
 import com.example.catalogapi.communications.CommunicationThreadStatus;
+import com.example.catalogapi.communications.CommunicationThreadType;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -10,6 +11,7 @@ public record ThreadResponse(
         UUID id,
         String subject,
         CommunicationThreadStatus status,
+        CommunicationThreadType type,
         OffsetDateTime updatedAt,
         List<MessageSummary> messages
 ) {
