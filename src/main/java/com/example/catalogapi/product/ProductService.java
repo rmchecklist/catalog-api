@@ -59,6 +59,15 @@ public class ProductService {
                 .toList();
     }
 
+    public ProductPageResponse findPaged(String search, String brand, String category, int page, int size) {
+        List<ProductResponse> filtered = findAll(search, brand, category);
+        long total = filtered.size();
+        int from = Math.max(0, Math.min(page * size, filtered.size()));
+        int to = Math.min(from + size, filtered.size());
+        List<ProductResponse> items = filtered.subList(from, to);
+        return new ProductPageResponse(items, total, page, size);
+    }
+
     public ProductResponse create(ProductRequest request) {
         String slug = slugify(request.name());
         if (productRepository.existsBySlugIgnoreCase(slug)) {

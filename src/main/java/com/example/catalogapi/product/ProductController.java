@@ -25,6 +25,17 @@ public class ProductController {
         return productService.findAll(search, brand, category);
     }
 
+    @GetMapping("/page")
+    public ProductPageResponse paged(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "brand", required = false) String brand,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "12") int size
+    ) {
+        return productService.findPaged(search, brand, category, Math.max(0, page), Math.max(1, Math.min(size, 100)));
+    }
+
     @GetMapping("/search")
     public List<ProductSuggestion> search(
             @RequestParam("term") String term,
