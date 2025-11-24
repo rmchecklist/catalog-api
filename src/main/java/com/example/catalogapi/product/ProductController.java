@@ -25,6 +25,14 @@ public class ProductController {
         return productService.findAll(search, brand, category);
     }
 
+    @GetMapping("/search")
+    public List<ProductSuggestion> search(
+            @RequestParam("term") String term,
+            @RequestParam(value = "limit", defaultValue = "8") int limit
+    ) {
+        return productService.searchSuggestions(term, Math.max(1, Math.min(limit, 20)));
+    }
+
     @GetMapping("/{slug}")
     public ProductResponse bySlug(@PathVariable String slug) {
         return productService.findBySlug(slug)

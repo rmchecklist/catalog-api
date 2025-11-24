@@ -39,6 +39,26 @@ public class ProductService {
         return productRepository.findBySlugIgnoreCase(slug).map(this::toResponse);
     }
 
+    public List<ProductSuggestion> searchSuggestions(String term, int limit) {
+        if (term == null || term.isBlank()) {
+            return List.of();
+        }
+        String searchTerm = term.toLowerCase(Locale.ROOT);
+        return productRepository.findAll().stream()
+                .filter(p -> p.getName().toLowerCase(Locale.ROOT).contains(searchTerm)
+                        || p.getBrand().toLowerCase(Locale.ROOT).contains(searchTerm)
+                        || p.getCategory().toLowerCase(Locale.ROOT).contains(searchTerm))
+                .limit(limit)
+                .map(p -> new ProductSuggestion(
+                        p.getName(),
+                        p.getBrand(),
+                        p.getCategory(),
+                        p.getSlug(),
+                        p.getImageUrl()
+                ))
+                .toList();
+    }
+
     public ProductResponse create(ProductRequest request) {
         String slug = slugify(request.name());
         if (productRepository.existsBySlugIgnoreCase(slug)) {
