@@ -189,14 +189,14 @@ public class OrderService {
     private void sendOrderEmail(OrderResponse order, String viewLink, CustomerEntity customer) {
         if (order.email() == null || order.email().isBlank()) return;
         String subject = "Ilan Foods · Order " + order.invoiceNumber();
-        String html = emailTemplate("Order", order.invoiceNumber(), customer.getName(), viewLink, order.pdfUrl(), "Thank you for your order.");
+        String html = emailTemplate("Order", order.invoiceNumber(), customer.getDisplayName(), viewLink, order.pdfUrl(), "Thank you for your order.");
         mailService.sendHtml(order.email(), subject, html, null);
     }
 
     private void sendQuoteEmail(QuoteResponse quote, String viewLink, CustomerEntity customer) {
         if (quote.email() == null || quote.email().isBlank()) return;
         String subject = "Ilan Foods · Quote " + quote.invoiceNumber();
-        String html = emailTemplate("Quote", quote.invoiceNumber(), customer.getName(), viewLink, quote.pdfUrl(), "Thanks for your request. We will respond shortly.");
+        String html = emailTemplate("Quote", quote.invoiceNumber(), customer.getDisplayName(), viewLink, quote.pdfUrl(), "Thanks for your request. We will respond shortly.");
         mailService.sendHtml(quote.email(), subject, html, null);
     }
 
