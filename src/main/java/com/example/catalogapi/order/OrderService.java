@@ -7,8 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @Transactional
@@ -22,12 +21,17 @@ public class OrderService {
     private final InvoiceNumberService invoiceNumberService;
     private final CustomerRepository customerRepository;
     private final InvoiceSummaryBuilder invoiceSummaryBuilder;
+    private final StatusHistoryRepository statusHistoryRepository;
+
+    private static final Set<OrderStatus> FINAL_ORDER_STATUSES = EnumSet.of(OrderStatus.SHIPPED, OrderStatus.CLOSED, OrderStatus.CANCELLED);
+    private static final Set<QuoteStatus> FINAL_QUOTE_STATUSES = EnumSet.of(QuoteStatus.SHIPPED, QuoteStatus.CLOSED, QuoteStatus.CANCELLED);
 
     public OrderService(OrderRepository orderRepository, QuoteRepository quoteRepository, PdfGeneratorService pdfGeneratorService,
                         MailService mailService,
                         InvoiceNumberService invoiceNumberService,
                         CustomerRepository customerRepository,
                         InvoiceSummaryBuilder invoiceSummaryBuilder,
+                        StatusHistoryRepository statusHistoryRepository,
                         @Value("${app.external-base-url:http://localhost:8080/catalog}") String externalBaseUrl,
                         @Value("${app.ui-base-url:http://localhost:4200}") String uiBaseUrl) {
         this.orderRepository = orderRepository;
@@ -39,6 +43,7 @@ public class OrderService {
         this.invoiceNumberService = invoiceNumberService;
         this.customerRepository = customerRepository;
         this.invoiceSummaryBuilder = invoiceSummaryBuilder;
+        this.statusHistoryRepository = statusHistoryRepository;
     }
 
     public OrderResponse createOrder(OrderRequest request) {
@@ -107,6 +112,14 @@ public class OrderService {
         quoteRepository.findById(id).ifPresent(quoteRepository::delete);
     }
 
+    public List<StatusHistoryResponse> getHistory(UUID parentId, StatusHistoryEntity.ParentType type) {
+        return statusHistoryRepository.findAll().stream()
+                .filter(h -> h.getParentId().equals(parentId) && h.getParentType() == type)
+                .sorted(Comparator.comparing(StatusHistoryEntity::getChangedAt).reversed())
+                .map(h -> new StatusHistoryResponse(h.getStatus(), h.getChangedAt()))
+                .toList();
+    }
+
     public boolean resendOrderEmail(UUID id, String emailOverride) {
         OrderEntity entity = orderRepository.findById(id).orElse(null);
         if (entity == null) return false;
@@ -141,6 +154,36 @@ public class OrderService {
         return true;
     }
 
+    public boolean updateOrder(UUID id, OrderUpdateRequest request) {
+        return orderRepository.findById(id).map(order -> {
+            if (FINAL_ORDER_STATUSES.contains(order.getStatus())) return false;
+            OrderStatus newStatus = OrderStatus.valueOf(request.status());
+            order.setStatus(newStatus);
+            if (request.items() != null && !request.items().isEmpty()) {
+                order.setItems(mapUpdateItems(request.items()));
+            }
+            orderRepository.save(order);
+            saveHistory(order.getId(), StatusHistoryEntity.ParentType.ORDER, newStatus.name());
+            sendStatusEmailOrder(order);
+            return true;
+        }).orElse(false);
+    }
+
+    public boolean updateQuote(UUID id, OrderUpdateRequest request) {
+        return quoteRepository.findById(id).map(quote -> {
+            if (FINAL_QUOTE_STATUSES.contains(quote.getStatus())) return false;
+            QuoteStatus newStatus = QuoteStatus.valueOf(request.status());
+            quote.setStatus(newStatus);
+            if (request.items() != null && !request.items().isEmpty()) {
+                quote.setItems(mapUpdateItems(request.items()));
+            }
+            quoteRepository.save(quote);
+            saveHistory(quote.getId(), StatusHistoryEntity.ParentType.QUOTE, newStatus.name());
+            sendStatusEmailQuote(quote);
+            return true;
+        }).orElse(false);
+    }
+
     public List<InvoiceSummaryResponse> listInvoices() {
         List<InvoiceSummaryResponse> orders = orderRepository.findAll().stream()
                 .map(invoiceSummaryBuilder::fromOrder)
@@ -170,9 +213,25 @@ public class OrderService {
         }).toList();
     }
 
+    private List<OrderItemEmbeddable> mapUpdateItems(List<OrderUpdateRequest.ItemUpdate> items) {
+        List<OrderItemEmbeddable> mapped = new ArrayList<>();
+        for (OrderUpdateRequest.ItemUpdate req : items) {
+            OrderItemEmbeddable emb = new OrderItemEmbeddable();
+            emb.setProductSlug(req.productSlug());
+            emb.setProductName(req.productName());
+            emb.setOptionLabel(req.optionLabel());
+            emb.setSku(req.sku());
+            emb.setQuantity(req.quantity());
+            emb.setSellingPrice(req.sellingPrice());
+            emb.setMarketPrice(req.marketPrice());
+            mapped.add(emb);
+        }
+        return mapped;
+    }
+
     private OrderResponse toResponse(OrderEntity entity) {
         List<OrderItemDto> items = entity.getItems().stream()
-                .map(i -> new OrderItemDto(i.getProductSlug(), i.getProductName(), i.getOptionLabel(), i.getSku(), i.getQuantity()))
+                .map(i -> new OrderItemDto(i.getProductSlug(), i.getProductName(), i.getOptionLabel(), i.getSku(), i.getQuantity(), i.getSellingPrice(), i.getMarketPrice()))
                 .toList();
         return new OrderResponse(entity.getId(), entity.getInvoiceNumber(), entity.getCustomerCode(), entity.getCustomerEmail(), entity.getCustomerName(), entity.getPhone(),
                 entity.getCompany(), entity.getStatus(), entity.getCreatedAt(), items, entity.getPdfUrl());
@@ -180,7 +239,7 @@ public class OrderService {
 
     private QuoteResponse toResponse(QuoteEntity entity) {
         List<OrderItemDto> items = entity.getItems().stream()
-                .map(i -> new OrderItemDto(i.getProductSlug(), i.getProductName(), i.getOptionLabel(), i.getSku(), i.getQuantity()))
+                .map(i -> new OrderItemDto(i.getProductSlug(), i.getProductName(), i.getOptionLabel(), i.getSku(), i.getQuantity(), i.getSellingPrice(), i.getMarketPrice()))
                 .toList();
         return new QuoteResponse(entity.getId(), entity.getInvoiceNumber(), entity.getCustomerCode(), entity.getRequesterEmail(), entity.getRequesterName(), entity.getPhone(),
                 entity.getCompany(), entity.getStatus(), entity.getCreatedAt(), items, entity.getPdfUrl());
@@ -200,6 +259,24 @@ public class OrderService {
         mailService.sendHtml(quote.email(), subject, html, null);
     }
 
+    private void sendStatusEmailOrder(OrderEntity order) {
+        if (order.getCustomerEmail() == null || order.getCustomerEmail().isBlank()) return;
+        String subject = "Ilan Foods · Order " + order.getInvoiceNumber() + " · " + order.getStatus();
+        String viewLink = uiBaseUrl + "/invoice/" + order.getId();
+        String html = emailTemplate("Order", order.getInvoiceNumber(), order.getCustomerName(), viewLink, order.getPdfUrl(),
+                "Status updated to " + order.getStatus());
+        mailService.sendHtml(order.getCustomerEmail(), subject, html, null);
+    }
+
+    private void sendStatusEmailQuote(QuoteEntity quote) {
+        if (quote.getRequesterEmail() == null || quote.getRequesterEmail().isBlank()) return;
+        String subject = "Ilan Foods · Quote " + quote.getInvoiceNumber() + " · " + quote.getStatus();
+        String viewLink = uiBaseUrl + "/invoice/" + quote.getId();
+        String html = emailTemplate("Quote", quote.getInvoiceNumber(), quote.getRequesterName(), viewLink, quote.getPdfUrl(),
+                "Status updated to " + quote.getStatus());
+        mailService.sendHtml(quote.getRequesterEmail(), subject, html, null);
+    }
+
     private String emailTemplate(String kind, String invoiceNumber, String customerName, String viewLink, String pdfLink, String message) {
         String pdf = pdfLink == null ? viewLink : pdfLink;
         return """
@@ -213,5 +290,13 @@ public class OrderService {
                   <p style="font-size:12px;color:#475569;">445 Hawks Creek Pkwy, Fort Mill SC · catalog.ilanfoods.com · 717-215-0206</p>
                 </div>
                 """.formatted(message, kind, invoiceNumber, customerName, viewLink, pdf);
+    }
+
+    private void saveHistory(UUID id, StatusHistoryEntity.ParentType type, String status) {
+        StatusHistoryEntity entry = new StatusHistoryEntity();
+        entry.setParentId(id);
+        entry.setParentType(type);
+        entry.setStatus(status);
+        statusHistoryRepository.save(entry);
     }
 }

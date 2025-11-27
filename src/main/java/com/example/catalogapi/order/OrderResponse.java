@@ -23,5 +23,7 @@ record OrderItemDto(
         String productName,
         String optionLabel,
         String sku,
-        Integer quantity
+        Integer quantity,
+        java.math.BigDecimal sellingPrice,
+        java.math.BigDecimal marketPrice
 ) {}
