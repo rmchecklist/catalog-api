@@ -32,6 +32,8 @@ public class QuoteEntity {
     @CollectionTable(name = "quote_items", joinColumns = @JoinColumn(name = "quote_id"))
     private List<OrderItemEmbeddable> items = new ArrayList<>();
 
+    private java.math.BigDecimal totalAmount;
+
     @PrePersist
     public void onCreate() {
         Instant now = Instant.now();
@@ -126,5 +128,13 @@ public class QuoteEntity {
 
     public void setItems(List<OrderItemEmbeddable> items) {
         this.items = items;
+    }
+
+    public java.math.BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(java.math.BigDecimal totalAmount) {
+        this.totalAmount = totalAmount;
     }
 }

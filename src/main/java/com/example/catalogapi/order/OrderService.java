@@ -57,6 +57,7 @@ public class OrderService {
         entity.setCompany(request.company());
         entity.setStatus(OrderStatus.PENDING);
         entity.getItems().addAll(mapItems(request.items()));
+        applyTotals(entity);
         String invoiceNumber = invoiceNumberService.nextInvoiceNumber(request.customerCode());
         entity.setInvoiceNumber(invoiceNumber);
         OrderEntity saved = orderRepository.save(entity);
@@ -66,7 +67,7 @@ public class OrderService {
         saved.setPdfUrl(pdf.publicUrl());
         orderRepository.save(saved);
         OrderResponse enriched = new OrderResponse(response.id(), response.invoiceNumber(), response.customerCode(), response.email(), response.name(), response.phone(), response.company(),
-                response.status(), response.createdAt(), response.items(), pdf.publicUrl());
+                response.status(), response.createdAt(), response.items(), pdf.publicUrl(), response.totalAmount());
         sendOrderEmail(enriched, viewLink, customer);
         return enriched;
     }
@@ -82,6 +83,7 @@ public class OrderService {
         entity.setCompany(request.company());
         entity.setStatus(QuoteStatus.RECEIVED);
         entity.getItems().addAll(mapItems(request.items()));
+        applyTotals(entity);
         String invoiceNumber = invoiceNumberService.nextInvoiceNumber(request.customerCode());
         entity.setInvoiceNumber(invoiceNumber);
         QuoteEntity saved = quoteRepository.save(entity);
@@ -91,7 +93,7 @@ public class OrderService {
         saved.setPdfUrl(pdf.publicUrl());
         quoteRepository.save(saved);
         QuoteResponse enriched = new QuoteResponse(response.id(), response.invoiceNumber(), response.customerCode(), response.email(), response.name(), response.phone(), response.company(),
-                response.status(), response.createdAt(), response.items(), pdf.publicUrl());
+                response.status(), response.createdAt(), response.items(), pdf.publicUrl(), response.totalAmount());
         sendQuoteEmail(enriched, viewLink, customer);
         return enriched;
     }
@@ -131,7 +133,7 @@ public class OrderService {
             orderRepository.save(entity);
         }
         OrderResponse enriched = new OrderResponse(response.id(), response.invoiceNumber(), response.customerCode(), emailOverride, response.name(), response.phone(), response.company(),
-                response.status(), response.createdAt(), response.items(), pdf.publicUrl());
+                response.status(), response.createdAt(), response.items(), pdf.publicUrl(), response.totalAmount());
         CustomerEntity customer = customerRepository.findById(response.customerCode()).orElse(null);
         sendOrderEmail(enriched, viewLink, customer);
         return true;
@@ -148,7 +150,7 @@ public class OrderService {
             quoteRepository.save(entity);
         }
         QuoteResponse enriched = new QuoteResponse(response.id(), response.invoiceNumber(), response.customerCode(), emailOverride, response.name(), response.phone(), response.company(),
-                response.status(), response.createdAt(), response.items(), pdf.publicUrl());
+                response.status(), response.createdAt(), response.items(), pdf.publicUrl(), response.totalAmount());
         CustomerEntity customer = customerRepository.findById(response.customerCode()).orElse(null);
         sendQuoteEmail(enriched, viewLink, customer);
         return true;
@@ -162,6 +164,7 @@ public class OrderService {
             if (request.items() != null && !request.items().isEmpty()) {
                 order.setItems(mapUpdateItems(request.items()));
             }
+            applyTotals(order);
             orderRepository.save(order);
             saveHistory(order.getId(), StatusHistoryEntity.ParentType.ORDER, newStatus.name());
             sendStatusEmailOrder(order);
@@ -177,6 +180,7 @@ public class OrderService {
             if (request.items() != null && !request.items().isEmpty()) {
                 quote.setItems(mapUpdateItems(request.items()));
             }
+            applyTotals(quote);
             quoteRepository.save(quote);
             saveHistory(quote.getId(), StatusHistoryEntity.ParentType.QUOTE, newStatus.name());
             sendStatusEmailQuote(quote);
@@ -201,6 +205,7 @@ public class OrderService {
 
     private List<OrderItemEmbeddable> mapItems(List<OrderItemRequest> items) {
         return items.stream().map(req -> {
+            validateItem(req.quantity(), req.sellingPrice());
             OrderItemEmbeddable emb = new OrderItemEmbeddable();
             emb.setProductSlug(req.productSlug());
             emb.setProductName(req.productName());
@@ -209,6 +214,7 @@ public class OrderService {
             emb.setQuantity(req.quantity());
             emb.setSellingPrice(req.sellingPrice());
             emb.setMarketPrice(req.marketPrice());
+            emb.setLineTotal(lineTotal(req.quantity(), req.sellingPrice()));
             return emb;
         }).toList();
     }
@@ -216,6 +222,7 @@ public class OrderService {
     private List<OrderItemEmbeddable> mapUpdateItems(List<OrderUpdateRequest.ItemUpdate> items) {
         List<OrderItemEmbeddable> mapped = new ArrayList<>();
         for (OrderUpdateRequest.ItemUpdate req : items) {
+            validateItem(req.quantity(), req.sellingPrice());
             OrderItemEmbeddable emb = new OrderItemEmbeddable();
             emb.setProductSlug(req.productSlug());
             emb.setProductName(req.productName());
@@ -224,6 +231,7 @@ public class OrderService {
             emb.setQuantity(req.quantity());
             emb.setSellingPrice(req.sellingPrice());
             emb.setMarketPrice(req.marketPrice());
+            emb.setLineTotal(lineTotal(req.quantity(), req.sellingPrice()));
             mapped.add(emb);
         }
         return mapped;
@@ -231,18 +239,18 @@ public class OrderService {
 
     private OrderResponse toResponse(OrderEntity entity) {
         List<OrderItemDto> items = entity.getItems().stream()
-                .map(i -> new OrderItemDto(i.getProductSlug(), i.getProductName(), i.getOptionLabel(), i.getSku(), i.getQuantity(), i.getSellingPrice(), i.getMarketPrice()))
+                .map(i -> new OrderItemDto(i.getProductSlug(), i.getProductName(), i.getOptionLabel(), i.getSku(), i.getQuantity(), i.getSellingPrice(), i.getMarketPrice(), i.getLineTotal()))
                 .toList();
         return new OrderResponse(entity.getId(), entity.getInvoiceNumber(), entity.getCustomerCode(), entity.getCustomerEmail(), entity.getCustomerName(), entity.getPhone(),
-                entity.getCompany(), entity.getStatus(), entity.getCreatedAt(), items, entity.getPdfUrl());
+                entity.getCompany(), entity.getStatus(), entity.getCreatedAt(), items, entity.getPdfUrl(), entity.getTotalAmount());
     }
 
     private QuoteResponse toResponse(QuoteEntity entity) {
         List<OrderItemDto> items = entity.getItems().stream()
-                .map(i -> new OrderItemDto(i.getProductSlug(), i.getProductName(), i.getOptionLabel(), i.getSku(), i.getQuantity(), i.getSellingPrice(), i.getMarketPrice()))
+                .map(i -> new OrderItemDto(i.getProductSlug(), i.getProductName(), i.getOptionLabel(), i.getSku(), i.getQuantity(), i.getSellingPrice(), i.getMarketPrice(), i.getLineTotal()))
                 .toList();
         return new QuoteResponse(entity.getId(), entity.getInvoiceNumber(), entity.getCustomerCode(), entity.getRequesterEmail(), entity.getRequesterName(), entity.getPhone(),
-                entity.getCompany(), entity.getStatus(), entity.getCreatedAt(), items, entity.getPdfUrl());
+                entity.getCompany(), entity.getStatus(), entity.getCreatedAt(), items, entity.getPdfUrl(), entity.getTotalAmount());
     }
 
     private void sendOrderEmail(OrderResponse order, String viewLink, CustomerEntity customer) {
@@ -298,5 +306,33 @@ public class OrderService {
         entry.setParentType(type);
         entry.setStatus(status);
         statusHistoryRepository.save(entry);
+    }
+
+    private void applyTotals(OrderEntity order) {
+        order.setTotalAmount(order.getItems().stream()
+                .map(OrderItemEmbeddable::getLineTotal)
+                .filter(java.util.Objects::nonNull)
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add));
+    }
+
+    private void applyTotals(QuoteEntity quote) {
+        quote.setTotalAmount(quote.getItems().stream()
+                .map(OrderItemEmbeddable::getLineTotal)
+                .filter(java.util.Objects::nonNull)
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add));
+    }
+
+    private void validateItem(Integer qty, java.math.BigDecimal price) {
+        if (qty == null || qty <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than zero");
+        }
+        if (price != null && price.compareTo(java.math.BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Price must be zero or greater");
+        }
+    }
+
+    private java.math.BigDecimal lineTotal(Integer qty, java.math.BigDecimal price) {
+        if (qty == null || price == null) return java.math.BigDecimal.ZERO;
+        return price.multiply(new java.math.BigDecimal(qty));
     }
 }

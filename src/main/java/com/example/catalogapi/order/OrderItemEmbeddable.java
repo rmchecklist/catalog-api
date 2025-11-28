@@ -12,6 +12,7 @@ public class OrderItemEmbeddable {
     private Integer quantity;
     private BigDecimal sellingPrice;
     private BigDecimal marketPrice;
+    private BigDecimal lineTotal;
 
     public String getProductSlug() {
         return productSlug;
@@ -67,5 +68,13 @@ public class OrderItemEmbeddable {
 
     public void setMarketPrice(BigDecimal marketPrice) {
         this.marketPrice = marketPrice;
+    }
+
+    public BigDecimal getLineTotal() {
+        return lineTotal;
+    }
+
+    public void setLineTotal(BigDecimal lineTotal) {
+        this.lineTotal = lineTotal;
     }
 }

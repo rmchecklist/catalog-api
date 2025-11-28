@@ -23,7 +23,8 @@ public class InvoiceSummaryBuilder {
                 entity.getStatus().name(),
                 entity.getCreatedAt(),
                 null,
-                view
+                view,
+                entity.getTotalAmount()
         );
     }
 
@@ -38,7 +39,8 @@ public class InvoiceSummaryBuilder {
                 entity.getStatus().name(),
                 entity.getCreatedAt(),
                 null,
-                view
+                view,
+                entity.getTotalAmount()
         );
     }
 }

@@ -15,5 +15,6 @@ public record QuoteResponse(
         QuoteStatus status,
         Instant createdAt,
         List<OrderItemDto> items,
-        String pdfUrl
+        String pdfUrl,
+        java.math.BigDecimal totalAmount
 ) { }

@@ -15,7 +15,8 @@ public record OrderResponse(
         OrderStatus status,
         Instant createdAt,
         List<OrderItemDto> items,
-        String pdfUrl
+        String pdfUrl,
+        java.math.BigDecimal totalAmount
 ) { }
 
 record OrderItemDto(
@@ -25,5 +26,6 @@ record OrderItemDto(
         String sku,
         Integer quantity,
         java.math.BigDecimal sellingPrice,
-        java.math.BigDecimal marketPrice
+        java.math.BigDecimal marketPrice,
+        java.math.BigDecimal lineTotal
 ) {}

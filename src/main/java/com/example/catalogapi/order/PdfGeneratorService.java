@@ -66,21 +66,32 @@ public class PdfGeneratorService {
             if (company != null && !company.isBlank()) doc.add(new Paragraph("Company: " + company));
             doc.add(new Paragraph(" "));
 
-        PdfPTable table = new PdfPTable(4);
+        PdfPTable table = new PdfPTable(6);
         table.setWidthPercentage(100);
         table.addCell(headerCell("SKU"));
         table.addCell(headerCell("Product"));
         table.addCell(headerCell("Option"));
         table.addCell(headerCell("Qty"));
+        table.addCell(headerCell("Price"));
+        table.addCell(headerCell("Line total"));
 
         var items = isQuote ? quote.items() : order.items();
-        items.forEach(item -> {
+        java.math.BigDecimal total = java.math.BigDecimal.ZERO;
+        for (var item : items) {
             table.addCell(item.sku() != null ? item.sku() : "");
             table.addCell(item.productName());
             table.addCell(item.optionLabel());
             table.addCell(String.valueOf(item.quantity()));
-        });
+            table.addCell(item.sellingPrice() != null ? item.sellingPrice().toPlainString() : "");
+            table.addCell(item.lineTotal() != null ? item.lineTotal().toPlainString() : "");
+            if (item.lineTotal() != null) {
+                total = total.add(item.lineTotal());
+            }
+        }
         doc.add(table);
+        doc.add(new Paragraph(" "));
+
+        doc.add(new Paragraph("Total: " + total.toPlainString(), FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12)));
         doc.add(new Paragraph(" "));
 
         doc.add(new Paragraph("View online: " + viewUrl));

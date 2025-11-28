@@ -12,5 +12,6 @@ public record InvoiceSummaryResponse(
         String status,
         Instant createdAt,
         String pdfUrl,
-        String viewUrl
+        String viewUrl,
+        java.math.BigDecimal totalAmount
 ) { }
